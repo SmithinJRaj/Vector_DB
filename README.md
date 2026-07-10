@@ -34,6 +34,7 @@ The project serves both as a learning resource for systems programming and as a 
 - 🐍 **Native Python Module** — Exposed through pybind11 with zero wrapper code required.
 - 📈 **Top-K Search** — Maintains only the best K results using a bounded priority queue.
 - 🖥 **Cross Platform** — Supports Linux and macOS.
+- 📊 Built-in benchmarking utilities (`generate_vectors.py` and `test.py`)
 
 ---
 
@@ -132,12 +133,15 @@ Memory usage remains **O(K)** regardless of dataset size.
 
 # 📂 Project Structure
 
-```
+```text
 .
-├── engine.cpp
-├── vectors.bin
+├── engine.cpp              # C++17 vector search engine
+├── generate_vectors.py     # Generate binary vector datasets
+├── test.py                 # Benchmark & example usage
 ├── README.md
-└── LICENSE
+├── LICENSE
+├── .gitignore
+└── vectors.bin             # Generated locally (ignored by Git)
 ```
 
 ---
@@ -173,56 +177,58 @@ engine.cpp \
 
 The `-march=native` flag enables CPU-specific optimizations such as AVX2 when supported by the host processor.
 
+> **Note**
+> ApexVec currently requires a CPU with AVX2 support.
+> Compiling with `-march=native` enables architecture-specific optimizations for the host processor.
+
 ---
 
 # 🚀 Quick Start
 
-## Generate Example Data
+### 1. Generate a Dataset
 
-```python
-import random
-import struct
+Generate one million random vectors (≈4 GB):
 
-DIMENSIONS = 1024
-NUM_VECTORS = 10000
+```bash
+python generate_vectors.py -n 1000000 -d 1024
+```
 
-with open("vectors.bin", "wb") as f:
-    for _ in range(NUM_VECTORS):
-        vector = [random.random() for _ in range(DIMENSIONS)]
-        f.write(struct.pack(f"{DIMENSIONS}f", *vector))
+Or generate the default dataset:
+
+```bash
+python generate_vectors.py
 ```
 
 ---
 
-## Search
+### 2. Run the Benchmark
 
-```python
-import time
-import vectordb
+```bash
+python test.py
+```
 
-DIMENSIONS = 1024
+Example output:
 
-db = vectordb.VectorDatabase("vectors.bin", DIMENSIONS)
+```text
+🚀 Booting ApexVec...
+Mapped 1000000 vectors from disk.
 
-print("Building IVF index...")
-db.build_ivf_index(100)
+=== Exact Search ===
+Vector ID: 792149 | Similarity: 0.8915
+Vector ID: 669153 | Similarity: 0.8883
+Vector ID: 687820 | Similarity: 0.8881
+Exact Search Time: 2111.838 ms
 
-query = [1.0] * DIMENSIONS
+=== Building IVF Index ===
+Index Build Time: 12132.034 ms
 
-start = time.time()
+=== IVF Search ===
+Vector ID: 228682 | Similarity: 0.8877
+Vector ID: 978194 | Similarity: 0.8864
+Vector ID: 953573 | Similarity: 0.8862
+IVF Search Time: 48.619 ms
 
-results = db.search_ivf(query, 3)
-
-end = time.time()
-
-print("Top Results")
-
-for result in results:
-    print(
-        f"Vector ID: {result.id} | Similarity: {result.similarity:.4f}"
-    )
-
-print(f"Search Time: {(end-start)*1000:.3f} ms")
+🚀 Speedup: 43.44× faster
 ```
 
 ---
@@ -277,32 +283,71 @@ Searches only the nearest IVF cluster for faster approximate retrieval.
 
 ---
 
+# 🧪 Benchmark Script
+
+ApexVec includes two helper scripts:
+
+### Generate Dataset
+
+```bash
+python generate_vectors.py
+```
+
+Options:
+
+```text
+-n, --num-vectors
+-d, --dimensions
+-o, --output
+--seed
+```
+
+Example:
+
+```bash
+python generate_vectors.py -n 1000000 -d 1024
+```
+
+---
+
+### Benchmark
+
+Run:
+
+```bash
+python test.py
+```
+
+The benchmark compares:
+
+- Exact brute-force search
+- IVF approximate search
+- Index construction time
+- Overall speedup
+
+---
+
 # 📊 Performance
 
-Benchmark performed on:
+Benchmark configuration:
 
-- 10,000 vectors
-- 1024 dimensions
-- ~40 MB binary dataset
+- **1,000,000 vectors**
+- **1024 dimensions**
+- **≈3.9 GB binary dataset**
+- **100 IVF clusters**
 
-| Search Method | Query Latency |
-|---------------|--------------:|
-| Exact Search | ~3.53 ms |
-| IVF Search | ~0.56 ms |
+| Search Method | Query Time |
+|---------------|-----------:|
+| Exact Search | **2111.84 ms** |
+| IVF Search | **48.62 ms** |
 
-Observed speedup:
+Observed performance:
 
-```
-≈ 6× faster
-```
+- 🚀 **43.4× faster** approximate search
+- 📁 Memory-mapped dataset (~3.9 GB)
+- ⚡ Sub-50 ms ANN retrieval on a million vectors
 
-Performance depends on:
-
-- CPU architecture
-- SIMD support
-- Storage device
-- Number of clusters
-- Dataset size
+> Results were measured on a local Linux system using AVX2 SIMD acceleration. Performance varies depending on CPU, storage device, and cluster count.
 
 ---
 
@@ -345,3 +390,5 @@ Performance depends on:
 # 📄 License
 
 This project is licensed under the **MIT License**.
+
+what do you think now ?

@@ -1,0 +1,5 @@
+vectordb_simd
+vectordb
+vectordb.cpython-314-x86_64-linux-gnu.so
+main.cpp
+vectors.bin

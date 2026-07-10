@@ -1,36 +1,57 @@
 import time
 import vectordb
 
-print("Booting C++ Engine from Python...")
-db = vectordb.VectorDatabase("vectors.bin", 1024)
-query = [1.0] * 1024
+DIMENSIONS = 1024
+TOP_K = 3
+NUM_CLUSTERS = 100
 
-# --- 1. Exhaustive Search ---
-print("\n--- Running Exhaustive Search O(N) ---")
-start_time = time.time()
-results_flat = db.search(query, 3)
-flat_time = (time.time() - start_time) * 1000
+print("🚀 Booting ApexVec...")
+db = vectordb.VectorDatabase("vectors.bin", DIMENSIONS)
 
-for res in results_flat:
-    print(f"Vector ID: {res.id} | Similarity: {res.similarity:.4f}")
-print(f"Exhaustive Search Time: {flat_time:.2f} ms")
+query = [1.0] * DIMENSIONS
 
+# -------------------------------------------------
+# Exact Search
+# -------------------------------------------------
+print("\n=== Exact Search ===")
 
-# --- 2. IVF Initialization ---
-print("\n--- Building IVF Index (100 Clusters) ---")
-start_time = time.time()
-db.build_ivf_index(100) # Break the database into 100 chunks
-print(f"Index built in {(time.time() - start_time) * 1000:.2f} ms")
+start = time.perf_counter()
+results_flat = db.search(query, TOP_K)
+flat_time = (time.perf_counter() - start) * 1000
 
+for result in results_flat:
+    print(
+        f"Vector ID: {result.id} | Similarity: {result.similarity:.4f}"
+    )
 
-# --- 3. IVF Search ---
-print("\n--- Running IVF Search O(N/K) ---")
-start_time = time.time()
-results_ivf = db.search_ivf(query, 3)
-ivf_time = (time.time() - start_time) * 1000
+print(f"Exact Search Time: {flat_time:.3f} ms")
 
-for res in results_ivf:
-    print(f"Vector ID: {res.id} | Similarity: {res.similarity:.4f}")
-print(f"IVF Search Time: {ivf_time:.2f} ms")
+# -------------------------------------------------
+# Build IVF Index
+# -------------------------------------------------
+print("\n=== Building IVF Index ===")
 
-print(f"\n🚀 Speedup Factor: {flat_time / ivf_time:.2f}x faster!")
+start = time.perf_counter()
+db.build_ivf_index(NUM_CLUSTERS)
+build_time = (time.perf_counter() - start) * 1000
+
+print(f"Index Build Time: {build_time:.3f} ms")
+
+# -------------------------------------------------
+# IVF Search
+# -------------------------------------------------
+print("\n=== IVF Search ===")
+
+start = time.perf_counter()
+results_ivf = db.search_ivf(query, TOP_K)
+ivf_time = (time.perf_counter() - start) * 1000
+
+for result in results_ivf:
+    print(
+        f"Vector ID: {result.id} | Similarity: {result.similarity:.4f}"
+    )
+
+print(f"IVF Search Time: {ivf_time:.3f} ms")
+
+if ivf_time > 0:
+    print(f"\n🚀 Speedup: {flat_time / ivf_time:.2f}× faster")
